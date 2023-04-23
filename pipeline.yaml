@@ -1,0 +1,188 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: handson-pipeline
+spec:
+  params: []
+  resources: []
+  workspaces: []
+  tasks:
+    - name: mvn-config
+      params:
+        - name: MAVEN_MIRROR_REPO
+          value: 'http://nexus:8081/repository/maven-public/'
+        - name: SERVER_USERNAME
+          value: admin
+        - name: SERVER_PASSWORD
+          value: admin123
+      runAfter: []
+      taskRef:
+        kind: Task
+        name: mvn-config
+      workspaces:
+        - name: workspace
+          workspace: source
+    - name: unit-tests
+      params:
+        - name: MAVEN_IMAGE
+          value: >-
+            gcr.io/cloud-builders/mvn@sha256:57523fc43394d6d9d2414ee8d1c85ed7a13460cbb268c3cd16d28cfb3859e641
+        - name: GOALS
+          value:
+            - package
+            - '-f'
+            - spring-petclinic
+        - name: MAVEN_MIRROR_URL
+          value: ''
+        - name: SERVER_USER
+          value: ''
+        - name: SERVER_PASSWORD
+          value: ''
+        - name: PROXY_USER
+          value: ''
+        - name: PROXY_PASSWORD
+          value: ''
+        - name: PROXY_PORT
+          value: ''
+        - name: PROXY_HOST
+          value: ''
+        - name: PROXY_NON_PROXY_HOSTS
+          value: ''
+        - name: PROXY_PROTOCOL
+          value: http
+        - name: CONTEXT_DIR
+          value: .
+      runAfter:
+        - mvn-config
+      taskRef:
+        kind: Task
+        name: maven
+      workspaces:
+        - name: source
+          workspace: source
+        - name: maven-settings
+          workspace: source
+    - name: code-analysis
+      params:
+        - name: MAVEN_IMAGE
+          value: >-
+            gcr.io/cloud-builders/mvn@sha256:57523fc43394d6d9d2414ee8d1c85ed7a13460cbb268c3cd16d28cfb3859e641
+        - name: GOALS
+          value:
+            - install
+            - 'sonar:sonar'
+            - '-f'
+            - spring-petclinic
+            - '-Dsonar.host.url=http://sonarqube:9000'
+            - '-Dsonar.userHome=/tmp/sonar'
+            - '-DskipTests=true'
+        - name: MAVEN_MIRROR_URL
+          value: ''
+        - name: SERVER_USER
+          value: ''
+        - name: SERVER_PASSWORD
+          value: ''
+        - name: PROXY_USER
+          value: ''
+        - name: PROXY_PASSWORD
+          value: ''
+        - name: PROXY_PORT
+          value: ''
+        - name: PROXY_HOST
+          value: ''
+        - name: PROXY_NON_PROXY_HOSTS
+          value: ''
+        - name: PROXY_PROTOCOL
+          value: http
+        - name: CONTEXT_DIR
+          value: .
+      runAfter:
+        - unit-tests
+      taskRef:
+        kind: Task
+        name: maven
+      workspaces:
+        - name: source
+          workspace: source
+        - name: maven-settings
+          workspace: source
+    - name: release-app
+      params:
+        - name: MAVEN_IMAGE
+          value: >-
+            gcr.io/cloud-builders/mvn@sha256:57523fc43394d6d9d2414ee8d1c85ed7a13460cbb268c3cd16d28cfb3859e641
+        - name: GOALS
+          value:
+            - deploy
+            - '-f'
+            - spring-petclinic
+            - '-DskipTests=true'
+            - >-
+              -DaltDeploymentRepository=nexus::default::http://nexus:8081/repository/maven-releases/
+            - >-
+              -DaltSnapshotDeploymentRepository=nexus::default::http://nexus:8081/repository/maven-snapshots/
+            - '-Durl=http://nexus:8081/repository/maven-releases/'
+            - '-DrepositoryId=nexus'
+        - name: MAVEN_MIRROR_URL
+          value: ''
+        - name: SERVER_USER
+          value: ''
+        - name: SERVER_PASSWORD
+          value: ''
+        - name: PROXY_USER
+          value: ''
+        - name: PROXY_PASSWORD
+          value: ''
+        - name: PROXY_PORT
+          value: ''
+        - name: PROXY_HOST
+          value: ''
+        - name: PROXY_NON_PROXY_HOSTS
+          value: ''
+        - name: PROXY_PROTOCOL
+          value: http
+        - name: CONTEXT_DIR
+          value: .
+      runAfter:
+        - code-analysis
+      taskRef:
+        kind: Task
+        name: maven
+      workspaces:
+        - name: source
+          workspace: source
+        - name: maven-settings
+          workspace: source
+    - name: build-image
+      params:
+        - name: VERSION
+          value: latest
+        - name: PATH_CONTEXT
+          value: spring-petclinic/target
+        - name: TLSVERIFY
+          value: 'false'
+        - name: MAVEN_ARGS_APPEND
+          value: ''
+        - name: MAVEN_CLEAR_REPO
+          value: 'false'
+        - name: MAVEN_MIRROR_URL
+          value: 'http://nexus:8081/repository/maven-public/'
+        - name: IMAGE
+          value: >-
+            image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/spring-petclinic:latest
+        - name: BUILDER_IMAGE
+          value: >-
+            registry.redhat.io/rhel8/buildah@sha256:ac0b8714cc260c94435cab46fe41b3de0ccbc3d93e38c395fa9d52ac49e521fe
+        - name: SKIP_PUSH
+          value: 'false'
+        - name: ENV_VARS
+          value: []
+      runAfter:
+        - release-app
+      taskRef:
+        kind: ClusterTask
+        name: s2i-java
+      workspaces:
+        - name: source
+          workspace: source
+  finally: []
