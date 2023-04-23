@@ -115,6 +115,8 @@ $ ./install.sh <ユーザ数>
 |repo_url|-|-|
 |revision|-|-|
 
+![select-parameter](images/select-parameter.png)
+
 次に `git-clone` Task でこれらのパラメーターを参照するよう設定します。`git-clone` Task を選択すると詳細設定画面が表示されるので、「パラメーター」の `url` のテキストボックスを選択します。テキストボックス上で Ctrl + Space を押すと、設定できる値が表示されます。このうち `params.repo_url` が `repo_url` パラメータを参照する設定値なので、これを選択します。同様に `revision` でも `params.revision` を選択します。
 
 ![parameter](images/parameter.png)
