@@ -28,10 +28,10 @@
 
 ```diff
 diff --git a/demo.sh b/demo.sh
-index 94e2c87..b70bf68 100755
+index 94e2c87..95db3d4 100755
 --- a/demo.sh
 +++ b/demo.sh
-@@ -237,6 +237,10 @@ EOF
+@@ -237,6 +237,14 @@ EOF
    oc label ns $stage_prj argocd.argoproj.io/managed-by=$cicd_prj
  
    oc project $cicd_prj
@@ -43,22 +43,32 @@ index 94e2c87..b70bf68 100755
 +  oc policy add-role-to-user admin $PRJ_PREFIX -n $dev_prj
 +  oc policy add-role-to-user admin $PRJ_PREFIX -n $stage_prj
 +  oc policy add-role-to-user admin $PRJ_PREFIX -n $cicd_prj
-
+ 
    cat <<-EOF
  
 diff --git a/infra/gitea.yaml b/infra/gitea.yaml
-index 71227c0..be3ac68 100644
+index 71227c0..9c9bc45 100644
 --- a/infra/gitea.yaml
 +++ b/infra/gitea.yaml
-@@ -26,7 +26,7 @@ metadata:
+@@ -24,9 +24,6 @@ apiVersion: apps/v1
+ kind: Deployment
+ metadata:
    name: gitea-postgresql
-   annotations:
-     image.openshift.io/triggers: >-
+-  annotations:
+-    image.openshift.io/triggers: >-
 -        [{"from":{"kind":"ImageStreamTag","name":"postgresql:12", "namespace":"openshift"},"fieldPath":"spec.template.spec.containers[?(@.name==\"postgresql\")].image"}]
-+        [{"from":{"kind":"ImageStreamTag","name":"postgresql:13-el8", "namespace":"openshift"},"fieldPath":"spec.template.spec.containers[?(@.name==\"postgresql\")].image"}]
    labels:
      app: gitea
      app.kubernetes.io/component: database
+@@ -48,7 +45,7 @@ spec:
+       containers:
+       - name: postgresql
+         imagePullPolicy: Always
+-        image: postgresql:12
++        image: registry.redhat.io/rhel8/postgresql-13:latest
+         env:
+         - name: POSTGRESQL_USER
+           value: gitea
 ```
 7. `install.sh` を `openshift-cicd-demo` リポジトリのルートにコピー
 8. `install.sh` を実行
@@ -66,12 +76,6 @@ index 71227c0..be3ac68 100644
 ```bash
 $ chmod +x install.sh
 $ ./install.sh <ユーザ数>
-```
-
-9. 講師用の環境をインストール
-
-```bash
-./demo.sh install --project-prefix admin
 ```
 
 </details>
@@ -84,13 +88,13 @@ $ ./install.sh <ユーザ数>
 
 ## 1. OpenShift Web Console のパイプラインビルダー上で GUI ベースで CI パイプラインを構築
 
-本ハンズオンでは GUI ベースでパイプラインを構築できるパイプラインビルダーを使います。画面上側のプロジェクトを「user<ユーザ ID>-cicd」に変更します。
+本ハンズオンでは GUI ベースでパイプラインを構築できるパイプラインビルダーを使います。
 
-画面左側のドロワーメニューから「パイプライン」を選択し、表示された画面上の右上にある「作成」ボタンを選択して「パイプライン」を選択してください。
+画面左側のドロワーメニューから「パイプライン」を選択し、表示された画面からプロジェクト「user<ユーザ ID>-cicd」を選択します。次に画面上の右上にある「作成」ボタンを選択して「パイプライン」を選択してください。
 
 ![select-pipeline](images/select-pipeline.png)
 
-次に、画面の「設定方法」から「YAML ビュー」を選択し、このリポジトリ上の `pipeline.yaml` の内容をコピーペーストしてください。
+次に、画面の「設定方法」から「YAML ビュー」を選択し、この GitHub リポジトリ上の [`pipeline.yaml`](https://raw.githubusercontent.com/k-srkw/openshift-cicd-handson/main/pipeline.yaml) の内容をコピーペーストしてください。
 
 ![yaml-view](images/yaml-view.png)
 
@@ -108,7 +112,7 @@ $ ./install.sh <ユーザ数>
 
 ![add-git-clone-task](images/add-git-clone-task.png)
 
-`git-clone` Task は Git リポジトリをクローンしてアプリケーションのソースコードを取得するため、クローン対象のリポジトリの URL とりビジョンの情報が必要です。これらの入力情報はパイプライン実行時に都度指定したいので、実行時に指定するパラメーターとして設定します。「パイプライン」の `パラメーターの追加` を選択するとパラメーターを追加できるので、以下のように指定します。
+`git-clone` Task は Git リポジトリをクローンしてアプリケーションのソースコードを取得するため、クローン対象のリポジトリの URL とりビジョンの情報が必要です。これらの入力情報はパイプライン実行時に都度指定したいので、実行時に指定するパラメーターとして設定します。「パラメーター」の `パラメーターの追加` を選択するとパラメーターを追加できるので、以下のように指定します。
 
 |名前|説明|デフォルト値|
 |--|--|--|
@@ -133,7 +137,7 @@ $ ./install.sh <ユーザ数>
 
 ![git-clone-workspace](images/git-clone-workspace.png)
 
-残りの設定が必要なパラメーターを指定していきます。
+`git-clone` Task に対してワークスペースを設定できたら、再度 `git-clone` Task の詳細画面から設定が必要な以下のパラメーターを指定していきます。
 
 |パラメーター|値|
 |--|--|
@@ -143,8 +147,6 @@ $ ./install.sh <ユーザ数>
 
 パイプラインの実体は `Pipeline` という API オブジェクトです。パイプラインビルダーで作成したパイプラインの実際のマニフェストの記述がどうなっているかは「パイプライン」の「YAML」タブから確認できるので、内容を確認してみてください。また、パイプラインの構築がうまくいかない場合は最終的な `Pipeline` の内容を記載した `pipeline-answer.yaml` も用意していいますので、参考にしてください。
 
-時間に余裕がある方は、 SonarQube にアクセスして静的解析の結果も確認してみてください。
-
 ## 2. OpenShift Web Console 上からパイプラインを実行できることを確認
 
 パイプラインを作成できたので、実際に動作確認をしてみましょう。まずはパイプラインの実行時に指定が必要なソースコードリポジトリの URL を確認します。今回の環境では Git リポジトリサーバは OpenShift 上で稼働しています。
@@ -153,7 +155,8 @@ $ ./install.sh <ユーザ数>
 
 ![gitea-route](images/gitea-route.png)
 
-画面右上の「Sign In」から事前に連絡したユーザ名、パスワードを入力しログインします。その後アプリケーションのソースコードを管理している `gitea/spring-petclinic` リポジトリを選択します。画面右側の URL 欄から URL をクリップボードにコピーします。
+画面右上の「サインイン」から事前に連絡したユーザ名、パスワードを入力しログインします。その後画面右の `Repositories`
+からアプリケーションのソースコードを管理している `gitea/spring-petclinic` リポジトリを選択します。選択後の画面右側の URL 欄から URL をクリップボードにコピーします。
 
 ![spring-petclinic-url](images/spring-petclinic-url.png)
 
@@ -179,6 +182,8 @@ OpenShift Web Console 上の「パイプライン」画面に戻り、作成し�
 パイプライン実行時、実体としては `PipelineRun` という API オブジェクトが作成されることでパイプラインが開始されます。
 
 ![pipelinerun-status](images/pipelinerun-status.png)
+
+時間に余裕がある方は、 SonarQube にアクセスして静的解析の結果も確認してみてください。
 
 ## 3. GitOps によるアプリケーションのデプロイ動作確認
 
@@ -217,3 +222,5 @@ Gitea のマニフェスト Git リポジトリ (`gitea/spring-petclinic-config`
 Pull Request を表示し、「Create merge commit」でマージ実施、しばらくすると Argo CD コンソール側で変更が同期反映されたことが確認できます。(すぐに確認したい場合は「REFRESH」を選択することで即時反映できます)
 
 ![sync](images/sync.png)
+
+OpenShift Console の画面に戻り、画面上側のプロジェクトを「user<ユーザ ID>-stage」に変更して「トポロジー」画面からステージング環境のアプリケーションの URL にアクセスします。アプリケーションの画面にメッセージ変更が反映されていることを確認します。
