@@ -137,7 +137,7 @@ $ ./install.sh <ユーザ数>
 
 ![git-clone-workspace](images/git-clone-workspace.png)
 
-`git-clone` Task に対してワークスペースを設定できたら、再度 `git-clone` Task の詳細画面から設定が必要な以下のパラメーターを指定していきます。
+`git-clone` Task に対してワークスペースを設定できたら、続けて `git-clone` Task の詳細画面から設定が必要な以下のパラメーターを指定していきます。
 
 |パラメーター|値|
 |--|--|
