@@ -12,14 +12,14 @@
 
 ## ハンズオン環境
 
-- OpenShift v4.12
-- OpenShift Pipelines v1.10
-- OpenShift GitOps v1.8
+- OpenShift v4.13
+- OpenShift Pipelines v1.14
+- OpenShift GitOps v1.13
 
 <details>
 <summary>ハンズオン講師向け環境構築手順</summary>
 
-1. OpenShift v4.12 クラスタをプロビジョニング
+1. OpenShift クラスタをプロビジョニング
 2. `user1` - `userN` のユーザをハンズオン参加者 + ハンズオン講師用に用意
 3. CLI から `cluster-admin` 権限のユーザで OpenShift にログイン
 4. OpenShift Pipelines Operator および OpenShift GitOps Operator をインストール
@@ -27,6 +27,15 @@
 6. ファイルの内容を以下のように変更
 
 ```diff
+diff --git a/config/gitea-configmap.yaml b/config/gitea-configmap.yaml
+index 4c6b43c..481fc5e 100644
+--- a/config/gitea-configmap.yaml
++++ b/config/gitea-configmap.yaml
+@@ -78,3 +78,4 @@ data:
+     [webhook]
+     ; Allow insecure certification
+     SKIP_TLS_VERIFY = true
++    ALLOWED_HOST_LIST = '*'
 diff --git a/demo.sh b/demo.sh
 index 94e2c87..95db3d4 100755
 --- a/demo.sh
@@ -112,7 +121,7 @@ $ ./install.sh <ユーザ数>
 
 ![add-git-clone-task](images/add-git-clone-task.png)
 
-`git-clone` Task は Git リポジトリをクローンしてアプリケーションのソースコードを取得するため、クローン対象のリポジトリの URL とりビジョンの情報が必要です。これらの入力情報はパイプライン実行時に都度指定したいので、実行時に指定するパラメーターとして設定します。「パラメーター」の `パラメーターの追加` を選択するとパラメーターを追加できるので、以下のように指定します。
+`git-clone` Task は Git リポジトリをクローンしてアプリケーションのソースコードを取得するため、クローン対象のリポジトリの URL とリビジョンの情報が必要です。これらの入力情報はパイプライン実行時に都度指定したいので、実行時に指定するパラメーターとして設定します。「パラメーター」の `パラメーターの追加` を選択するとパラメーターを追加できるので、以下のように指定します。
 
 |名前|説明|デフォルト値|
 |--|--|--|
